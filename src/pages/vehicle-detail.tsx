@@ -17,8 +17,10 @@ import {
 } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
+import { BrandLogo } from '@/components/brands/brand-logo'
 import { EmptyState } from '@/components/common/empty-state'
 import { ErrorState } from '@/components/common/error-state'
+import { Section } from '@/components/common/section'
 import { MovementDialog } from '@/components/vehicles/movement-dialog'
 import { MovementTimeline } from '@/components/vehicles/movement-timeline'
 import { VehicleFormDialog } from '@/components/vehicles/vehicle-form-dialog'
@@ -28,6 +30,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { usePhotoUrls } from '@/hooks/use-photo-urls'
 import { useVehicleEvents } from '@/hooks/use-vehicle-events'
 import { useVehicle } from '@/hooks/use-vehicles'
+import { vehicleBrand } from '@/lib/brands'
 import {
   CONDITION_LABEL,
   REGISTRATION_LABEL,
@@ -43,33 +46,6 @@ import {
   vehicleTitle,
 } from '@/lib/format'
 import { cn } from '@/lib/utils'
-
-function Section({
-  title,
-  icon: Icon,
-  action,
-  className,
-  children,
-}: {
-  title: string
-  icon: React.ElementType
-  action?: React.ReactNode
-  className?: string
-  children: React.ReactNode
-}) {
-  return (
-    <section className={cn('glass-tile-solid rounded-[1.75rem] p-5 sm:p-6', className)}>
-      <header className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide">
-          <Icon className="size-4 text-muted-foreground" />
-          {title}
-        </h2>
-        {action}
-      </header>
-      {children}
-    </section>
-  )
-}
 
 function Spec({
   label,
@@ -127,6 +103,7 @@ export default function VehicleDetailPage() {
   const inStock = vehicle.status === 'in_stock'
   const sold = vehicle.status === 'sold'
   const owner = vehicle.owner
+  const brand = vehicleBrand(vehicle.make)
 
   return (
     <div className="page-enter space-y-5">
@@ -143,6 +120,13 @@ export default function VehicleDetailPage() {
               {vehicle.body_type ? (
                 <Badge variant="muted">{vehicle.body_type}</Badge>
               ) : null}
+              <Link
+                to={`/brands/${brand.slug}`}
+                className="inline-flex items-center gap-2 rounded-full border border-white/45 bg-white/40 py-0.5 pl-0.5 pr-3 text-xs font-medium transition-colors hover:bg-white/60"
+              >
+                <BrandLogo brand={brand} className="size-6" />
+                Every {brand.name} on record
+              </Link>
             </div>
             <h1 className="mt-3 text-4xl tracking-tight text-display sm:text-5xl">
               {vehicleTitle(vehicle)}

@@ -16,6 +16,7 @@ const LoginPage = lazy(() => import('@/pages/login'))
 const DashboardPage = lazy(() => import('@/pages/dashboard'))
 const VehiclesPage = lazy(() => import('@/pages/vehicles'))
 const VehicleDetailPage = lazy(() => import('@/pages/vehicle-detail'))
+const BrandPage = lazy(() => import('@/pages/brand'))
 const OwnersPage = lazy(() => import('@/pages/owners'))
 const SettingsPage = lazy(() => import('@/pages/settings'))
 const ImportPage = lazy(() => import('@/pages/import'))
@@ -49,6 +50,7 @@ export default function App() {
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/vehicles" element={<VehiclesPage />} />
                   <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
+                  <Route path="/brands/:slug" element={<BrandPage />} />
                   <Route path="/owners" element={<OwnersPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/import" element={<ImportPage />} />

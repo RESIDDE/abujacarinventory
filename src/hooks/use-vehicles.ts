@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { supabase } from '@/lib/supabase'
 import { normalizeVehicle } from '@/lib/normalize'
+import { brandEventKeys } from '@/hooks/use-brand-events'
 import { cleanOwnerInput } from '@/hooks/use-owners'
 import {
   discardVehiclePhotos,
@@ -227,6 +228,7 @@ export function useCreateVehicle() {
       void queryClient.invalidateQueries({ queryKey: ['owners'] })
       void queryClient.invalidateQueries({ queryKey: ['owner-vehicle-counts'] })
       void queryClient.invalidateQueries({ queryKey: ['vehicle-events', vehicle.id] })
+      void queryClient.invalidateQueries({ queryKey: brandEventKeys.all })
     },
   })
 }
@@ -282,6 +284,8 @@ export function useUpdateVehicle() {
       void queryClient.invalidateQueries({ queryKey: vehicleKeys.all })
       void queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(vehicle.id) })
       void queryClient.invalidateQueries({ queryKey: ['owner-vehicle-counts'] })
+      // A corrected make moves the vehicle's history to another brand's log.
+      void queryClient.invalidateQueries({ queryKey: brandEventKeys.all })
     },
   })
 }
@@ -296,6 +300,7 @@ export function useDeleteVehicle() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: vehicleKeys.all })
       void queryClient.invalidateQueries({ queryKey: ['owner-vehicle-counts'] })
+      void queryClient.invalidateQueries({ queryKey: brandEventKeys.all })
     },
   })
 }

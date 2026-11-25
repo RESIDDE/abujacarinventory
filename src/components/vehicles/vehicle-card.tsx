@@ -14,8 +14,10 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
+import { BrandLogo } from '@/components/brands/brand-logo'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { vehicleBrand } from '@/lib/brands'
 import { CONDITION_LABEL, REGISTRATION_SHORT, STATUS_LABEL } from '@/lib/constants'
 import {
   countBelongings,
@@ -81,14 +83,17 @@ export function VehicleCard({
       ) : null}
 
       <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-base font-semibold tracking-tight">
-            {vehicleTitle(vehicle)}
-          </h3>
-          <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-            <User className="size-3.5 shrink-0" />
-            <span className="truncate">{vehicle.owner?.full_name ?? 'Unknown owner'}</span>
-          </p>
+        <div className="flex min-w-0 items-center gap-3">
+          <BrandLogo brand={vehicleBrand(vehicle.make)} className="size-9" />
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-semibold tracking-tight">
+              {vehicleTitle(vehicle)}
+            </h3>
+            <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+              <User className="size-3.5 shrink-0" />
+              <span className="truncate">{vehicle.owner?.full_name ?? 'Unknown owner'}</span>
+            </p>
+          </div>
         </div>
         <Badge variant={inStock ? 'inStock' : 'released'} className="shrink-0">
           {STATUS_LABEL[vehicle.status]}

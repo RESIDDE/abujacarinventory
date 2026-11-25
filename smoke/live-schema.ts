@@ -36,6 +36,16 @@ await check('owner vehicle counts', () => supabase.from('vi_vehicles').select('o
 await check('vehicle events', () =>
   supabase.from('vi_vehicle_events').select('*').order('occurred_at', { ascending: false }).limit(1),
 )
+// The brand page's movement log, filtered through the vehicle's make. An
+// embed filter only narrows the parent rows when the embed is !inner.
+await check('brand movement log (events filtered by make)', () =>
+  supabase
+    .from('vi_vehicle_events')
+    .select('*, vi_vehicles!inner(make)')
+    .in('vi_vehicles.make', ['Toyota', 'Mercedes-Benz', 'Land Rover'])
+    .order('occurred_at', { ascending: false })
+    .limit(1),
+)
 await check('staff members', () =>
   supabase.from('vi_staff_members').select('*').order('active', { ascending: false }).limit(1),
 )

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { supabase } from '@/lib/supabase'
+import { brandEventKeys } from '@/hooks/use-brand-events'
 import { vehicleKeys } from '@/hooks/use-vehicles'
 import type { VehicleEvent, VehicleEventType } from '@/types/database'
 
@@ -69,6 +70,7 @@ export function useRecordMovement() {
       void queryClient.invalidateQueries({ queryKey: vehicleKeys.all })
       void queryClient.invalidateQueries({ queryKey: vehicleKeys.detail(input.vehicleId) })
       void queryClient.invalidateQueries({ queryKey: eventKeys.forVehicle(input.vehicleId) })
+      void queryClient.invalidateQueries({ queryKey: brandEventKeys.all })
     },
   })
 }

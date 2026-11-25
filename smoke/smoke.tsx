@@ -4,6 +4,14 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { BelongingsEditor } from '@/components/vehicles/belongings-editor'
+import { BrandActivity } from '@/components/brands/brand-activity'
+import { BrandCustomers } from '@/components/brands/brand-customers'
+import { BrandLogo } from '@/components/brands/brand-logo'
+import { BrandRegister } from '@/components/brands/brand-register'
+import { BrandSales } from '@/components/brands/brand-sales'
+import { BrandStrip } from '@/components/brands/brand-strip'
+import { brandFromSlug, groupByBrand, monogramOf, vehicleBrand } from '@/lib/brands'
+import { buildBrandRecord, daysBetween, modelKeyOf } from '@/lib/brand-record'
 import { BrandMark } from '@/components/common/brand-mark'
 import { SignaturePad } from '@/components/common/signature-pad'
 import { CurrencyInput } from '@/components/vehicles/currency-input'
@@ -753,6 +761,117 @@ const _unusedTail: [string, unknown, unknown][] = [
   ],
 ]
 units.push(..._unusedTail)
+
+// ----- Brands -----
+
+const like = (id: string, make: string, extra: Partial<VehicleWithOwner> = {}): VehicleWithOwner => ({
+  ...vehicles[0],
+  id,
+  make,
+  ...extra,
+})
+
+const brandFixture = [
+  like('b1', 'Toyota'),
+  like('b2', 'toyota ', { model: 'camry', status: 'sold', sold_date: '2026-10-20' }),
+  like('b3', 'Benz', { model: 'GLE 350' }),
+  like('b4', 'MERCEDES-BENZ', { model: 'gle350', status: 'released', released_date: '2026-10-22' }),
+  like('b5', 'FOTON'),
+  like('b6', 'foton'),
+  like('b7', 'Foton'),
+]
+const brandGroups = groupByBrand(brandFixture)
+const brandRecord = buildBrandRecord(vehicles)
+const namedOnly = buildBrandRecord([
+  { ...vehicles[1], id: 'n1', buyer: null, buyer_id: null, buyer_name: 'Chidi  Obi' },
+  { ...vehicles[1], id: 'n2', buyer: null, buyer_id: null, buyer_name: 'chidi obi' },
+])
+const benzRecord = buildBrandRecord(brandGroups[1].vehicles)
+
+const brandHtml = renderToString(
+  <QueryClientProvider client={new QueryClient()}>
+    <MemoryRouter>
+      <BrandStrip groups={groupByBrand(vehicles)} />
+      <BrandLogo brand={vehicleBrand('Innoson')} />
+      <BrandLogo brand={vehicleBrand('Benz')} />
+      <BrandRegister
+        vehicles={vehicles}
+        status="all"
+        onStatusChange={noop}
+        model={null}
+        onClearModel={noop}
+      />
+      <BrandSales sales={brandRecord.sales} brandName="Lexus" />
+      <BrandSales sales={[]} brandName="Kia" />
+      <BrandCustomers
+        customers={brandRecord.customers}
+        namedBuyers={namedOnly.namedBuyers}
+        brandName="Lexus"
+      />
+      <BrandActivity events={events} vehicles={new Map(vehicles.map((v) => [v.id, v]))} />
+    </MemoryRouter>
+  </QueryClientProvider>,
+).replace(/<!--\s*-->/g, '')
+
+checks.push(
+  ['brand tile opens the brand record', brandHtml.includes('href="/brands/toyota"')],
+  ['brand tile shows the logo file', brandHtml.includes('src="/brand-logos/toyota.svg"')],
+  ['lexus has its drawn logo', brandHtml.includes('src="/brand-logos/lexus.svg"')],
+  ['benz resolves to the mercedes logo', brandHtml.includes('src="/brand-logos/mercedes-benz.svg"')],
+  ['a brand with no logo gets a monogram', brandHtml.includes('>I</text>')],
+  ['brand tile names its stock', brandHtml.includes('1 in stock')],
+  ['brand tile is labelled for screen readers', brandHtml.includes('aria-label="Toyota: 1 vehicle on record, 1 in stock"')],
+  ['register lists the VIN', brandHtml.includes('JTDBR32E030123456')],
+  ['register says how long it has been held', brandHtml.includes('Arrived today')],
+  ['register links to the vehicle', brandHtml.includes('href="/vehicles/v2"')],
+  ['sales say how long it took', brandHtml.includes('14 days to sell')],
+  ['sales name the buyer', /Sold to <span[^>]*>Amaka Okonkwo</.test(brandHtml)],
+  ['sales show the price', brandHtml.includes('7,250,000')],
+  ['no sales says so', brandHtml.includes('No Kia has been sold yet.')],
+  ['customers can be called', brandHtml.includes('tel:08031112222')],
+  ['customer counts both relationships', brandHtml.includes('1 stored') && brandHtml.includes('1 bought')],
+  ['name-only buyers are listed once', brandHtml.split('Chidi Obi').length === 2],
+  ['activity names the vehicle', brandHtml.includes('2016 Toyota Corolla')],
+  ['activity credits the staff', brandHtml.includes('to Amaka Okonkwo · by Bayo')],
+)
+
+units.push(
+  ['"Benz" is a Mercedes-Benz', vehicleBrand('Benz').slug, 'mercedes-benz'],
+  ['a VIN decode\'s "Mercedes-benz" too', vehicleBrand('Mercedes-benz').name, 'Mercedes-Benz'],
+  ['and the "Mercedez" misspelling', vehicleBrand('Mercedez').slug, 'mercedes-benz'],
+  ['a model typed into make still finds it', vehicleBrand('Toyota Camry').slug, 'toyota'],
+  ['a Range Rover is a Land Rover', vehicleBrand('Range Rover Sport').slug, 'land-rover'],
+  ['"VW" is Volkswagen', vehicleBrand('VW').name, 'Volkswagen'],
+  ['"Bmw" is written BMW', vehicleBrand('Bmw').name, 'BMW'],
+  ['accents do not split a brand', vehicleBrand('Citroën').slug, vehicleBrand('citroen').slug],
+  ['an unknown make is its own brand', vehicleBrand('Sinotruk').logo, null],
+  ['a shouted unknown make is tidied', vehicleBrand('SINOTRUK').name, 'Sinotruk'],
+  ['a short unknown make keeps its capitals', vehicleBrand('JMC').name, 'JMC'],
+  ['"constructor" is not a catalogue hit', vehicleBrand('constructor').name, 'Constructor'],
+  ['nor is its slug', brandFromSlug('constructor').logo, null],
+  ['a blank make has a home', vehicleBrand('  ').slug, 'unknown'],
+  ['a slug finds its catalogue name', brandFromSlug('land-rover').name, 'Land Rover'],
+  ['monogram of two words', monogramOf('Great Wall'), 'GW'],
+  ['monogram of a short name', monogramOf('GMC'), 'GMC'],
+  ['monogram of one long word', monogramOf('Innoson'), 'I'],
+  ['seven vehicles, three brands', brandGroups.length, 3],
+  ['biggest brand first', brandGroups[0].brand.name, 'Foton'],
+  ['ties go alphabetically', brandGroups[1].brand.name, 'Mercedes-Benz'],
+  ['spellings are kept exactly as stored', brandGroups[2].spellings.includes('toyota '), true],
+  ['brand group counts its sales', brandGroups[2].sold, 1],
+  ['models group across spacing and case', benzRecord.models.length, 1],
+  ['model name is the common spelling', benzRecord.models[0].total, 2],
+  ['model keys match loosely', modelKeyOf('RX 350'), modelKeyOf('rx350 ')],
+  ['record counts stock', brandRecord.inStock, 1],
+  ['record totals sales', brandRecord.salesTotal, 7_250_000],
+  ['record values stock', brandRecord.stockValue, 12_500_000],
+  ['record times the sale', brandRecord.averageDaysToSell, 14],
+  ['a customer who stored and bought is one person', brandRecord.customers.length, 1],
+  ['name-only buyers merge on name', namedOnly.namedBuyers.length, 1],
+  ['and keep both purchases', namedOnly.namedBuyers[0].bought.length, 2],
+  ['days between dates', daysBetween('2026-10-01', '2026-10-15'), 14],
+  ['days backwards is not a number', daysBetween('2026-10-15', '2026-10-01'), null],
+)
 
 let failed = 0
 
