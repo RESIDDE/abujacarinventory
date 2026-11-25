@@ -3,6 +3,8 @@ import { Car, Plus, Search, Upload, X } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import { BrandLogo } from '@/components/brands/brand-logo'
+import { BrandStrip } from '@/components/brands/brand-strip'
 import { EmptyState } from '@/components/common/empty-state'
 import { ErrorState } from '@/components/common/error-state'
 import { HistoryDialog } from '@/components/vehicles/history-dialog'
@@ -24,6 +26,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePhotoUrls } from '@/hooks/use-photo-urls'
 import { useDeleteVehicle, useVehicles } from '@/hooks/use-vehicles'
+import { brandFromSlug, groupByBrand, vehicleBrand } from '@/lib/brands'
 import { describeDbError } from '@/lib/errors'
 import { vehicleTitle } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -95,17 +98,31 @@ export default function VehiclesPage() {
     setSearchParams(params, { replace: true })
   }, [wantsNew, searchParams, setSearchParams])
 
-  // ?owner= narrows the list to one owner, which is how the owner cards link in.
+  // ?owner= narrows the list to one owner, which is how the owner cards link
+  // in; ?brand= to one make, which is how a brand record links in.
   const ownerId = searchParams.get('owner')
+  const brandSlug = searchParams.get('brand')
   const scoped = React.useMemo(
-    () => (ownerId ? vehicles.filter((v) => v.owner_id === ownerId) : vehicles),
-    [vehicles, ownerId],
+    () =>
+      vehicles.filter(
+        (v) =>
+          (!ownerId || v.owner_id === ownerId) &&
+          (!brandSlug || vehicleBrand(v.make).slug === brandSlug),
+      ),
+    [vehicles, ownerId, brandSlug],
   )
   const ownerName = scoped[0]?.owner?.full_name ?? null
 
-  const clearOwner = () => {
+  // The strip lists every make in the yard, whatever the list is filtered to.
+  const brandGroups = React.useMemo(() => groupByBrand(vehicles), [vehicles])
+  const activeBrand = brandSlug
+    ? (brandGroups.find((g) => g.brand.slug === brandSlug)?.brand ?? brandFromSlug(brandSlug))
+    : null
+
+  /** One URL update for every key, so no call overwrites another's change. */
+  const clearParams = (...keys: string[]) => {
     const params = new URLSearchParams(searchParams)
-    params.delete('owner')
+    for (const key of keys) params.delete(key)
     setSearchParams(params, { replace: true })
   }
 
@@ -224,27 +241,51 @@ export default function VehiclesPage() {
             ))}
           </div>
         </div>
-        {ownerId ? (
+        {ownerId || activeBrand ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/45 bg-white/40 px-3.5 py-1.5 text-xs font-medium">
-              Owner: {ownerName ?? 'selected owner'}
-              <button
-                type="button"
-                onClick={clearOwner}
-                aria-label="Clear owner filter"
-                className="grid size-4 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <X className="size-3.5" />
-              </button>
-            </span>
+            {ownerId ? (
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/45 bg-white/40 px-3.5 py-1.5 text-xs font-medium">
+                Owner: {ownerName ?? 'selected owner'}
+                <button
+                  type="button"
+                  onClick={() => clearParams('owner')}
+                  aria-label="Clear owner filter"
+                  className="grid size-4 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </span>
+            ) : null}
+            {activeBrand ? (
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/45 bg-white/40 py-1 pl-1 pr-3.5 text-xs font-medium">
+                <BrandLogo brand={activeBrand} className="size-6" />
+                Brand: {activeBrand.name}
+                <Link
+                  to={`/brands/${activeBrand.slug}`}
+                  className="text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  Full record
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => clearParams('brand')}
+                  aria-label="Clear brand filter"
+                  className="grid size-4 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </span>
+            ) : null}
           </div>
         ) : null}
       </header>
 
+      {!isError ? <BrandStrip groups={brandGroups} isLoading={isLoading} /> : null}
+
       {isError ? (
         <ErrorState error={error} onRetry={refetch} />
       ) : isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} className="h-[22rem] rounded-[1.75rem]" />
           ))}
@@ -273,8 +314,7 @@ export default function VehiclesPage() {
                 variant="outline"
                 onClick={() => {
                   setQuery('')
-                  setStatus('all')
-                  clearOwner()
+                  clearParams('status', 'owner', 'brand')
                 }}
               >
                 Clear filters
@@ -283,7 +323,7 @@ export default function VehiclesPage() {
           }
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((vehicle) => (
             <VehicleCard
               key={vehicle.id}
